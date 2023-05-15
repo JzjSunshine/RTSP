@@ -26,19 +26,19 @@ class RTP_Header
 {
 private:
     //byte 0
-    uint8_t csrcCount : 4;
-    uint8_t extension : 1;
-    uint8_t padding : 1;
-    uint8_t version : 2;
+    uint8_t csrcCount : 4; // CSRC计数器，占4位，指示CSRC 标识符的个数
+    uint8_t extension : 1; // 
+    uint8_t padding : 1; // 是否支持填充
+    uint8_t version : 2; // RTP 版本号
     //byte 1
-    uint8_t payloadType : 7;
-    uint8_t marker : 1;
+    uint8_t payloadType : 7; // 有效荷载类型，用于说明RTP 报文中的有效载荷类型；通常用来区分音频流和视频流
+    uint8_t marker : 1; // 视频标识1帧结束；音频标记回话的开始
     //byte 2, 3
-    uint16_t seq;
+    uint16_t seq; // RTP 包序列
     //byte 4-7
-    uint32_t timestamp;
+    uint32_t timestamp;// 时间戳，必须采用 90kHz时钟频率
     //byte 8-11
-    uint32_t ssrc;
+    uint32_t ssrc;// 表示同步信源，参加同一视频会议的两个同步信源不能有相同的 SSRC
 
 public:
     RTP_Header(
@@ -87,6 +87,7 @@ public:
     ~RTP_Packet() = default;
 
     void load_data(const uint8_t *data, int64_t dataSize, int64_t bias = 0);
+    // 系统调用发送UDP报文进行包装
     int64_t rtp_sendto(int sockfd, int64_t _bufferLen, int flags, const sockaddr *to, uint32_t timeStampStep);
 
     void set_header_seq(const uint32_t _seq);
