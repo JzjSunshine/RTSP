@@ -7,19 +7,36 @@
  * @FilePath: /rtsp/src/main.cc
  */
 #include "../include/rtsp.h"
-
+#include "../include/Utils.h"
 #include <iostream>
 #include <cstdlib>
+#include <string>
+
 
 int main(int argc, char *argv[])
 {
     if (argc != 3)
     {
-        fprintf(stdout, "usage: %s <file name> <fps>\n", argv[0]);
+        fprintf(stdout, "usage: %s <file name> <fileType(video/audio)\n", argv[0]);
+        return 1;
+    }
+    std::string fileType = argv[2];
+
+    if(fileType != "video" && fileType != "audio"){
+        fprintf(stdout, "usage: %s <file name> <fileType(video/audio)>\n", argv[0]);
         return 1;
     }
     RTSP rtspServer(argv[1]);
-    rtspServer.Start(19990825, "wadegao", 600, atof(argv[2]));
+    Tookit tookit(argv[1]);
+    int fps = 0;
+    if(fileType == "video"){
+        fps = tookit.getFPSVideo();
+    }else{
+        fps = tookit.getFPSAudio();
+    }
+    std::cout << "fps: " << fps << std::endl;
+    rtspServer.Start(19990825, "wadegao", 600, 25);
+    // rtspServer.Start(19990825, "wadegao", 600, double(fps));
 
     return 0;
 }

@@ -85,9 +85,12 @@ public:
 
     RTP_Packet(const RTP_Packet &) = default;
     ~RTP_Packet() = default;
-
+    /**
+     * 发送报文时，只能对数据部分修改，不能修改header
+     * 修改数据部分的接口函数
+    */
     void load_data(const uint8_t *data, int64_t dataSize, int64_t bias = 0);
-    // 系统调用发送UDP报文进行包装
+    // 对sendto系统调用包装发送UDP报文进行包装
     int64_t rtp_sendto(int sockfd, int64_t _bufferLen, int flags, const sockaddr *to, uint32_t timeStampStep);
 
     void set_header_seq(const uint32_t _seq);

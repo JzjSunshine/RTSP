@@ -42,7 +42,9 @@ H264Parser::~H264Parser()
     assert(munmap(reinterpret_cast<void *>(this->ptr_mapped_file_start), this->file_size) == 0);
     this->ptr_mapped_file_cur = this->ptr_mapped_file_start = this->ptr_mapped_file_end = nullptr;
 }
-
+/**
+ * startCode要么是3字节的0x000001，要么是4字节的 0x00000001
+*/
 bool H264Parser::is_start_code(const uint8_t *_buffer, const int64_t buffer_len, const uint8_t start_code_type)
 {
     switch (start_code_type)
@@ -61,7 +63,10 @@ bool H264Parser::is_start_code(const uint8_t *_buffer, const int64_t buffer_len,
     }
     return false;
 }
-
+/**
+ * 找到一个NAL单元的开始位置，还需要找到其结束的位置。
+ * 两个StartCode之间的数据，就是一个NAL单元，所以还需要实现查找下一个StartCode的算法，采用双指针法
+*/
 const uint8_t *H264Parser::find_next_start_code(const uint8_t *_buffer, const int64_t buffer_len)
 {
     for (int64_t i = 0; i < buffer_len - 3; i++)
@@ -95,4 +100,8 @@ std::pair<const uint8_t *, int64_t> H264Parser::get_next_frame()
     auto ptr_ret = this->ptr_mapped_file_cur;
     this->ptr_mapped_file_cur += frame_size;
     return {ptr_ret, frame_size};
+}
+void H264Parser::setFps(int fps_)
+{
+    fps = fps_;
 }

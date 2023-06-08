@@ -33,11 +33,12 @@ private:
     uint8_t *ptr_mapped_file_cur = nullptr;
     uint8_t *ptr_mapped_file_start = nullptr, *ptr_mapped_file_end = nullptr;
     int64_t file_size = 0;
+    int fps = 0;
 
 public:
     explicit H264Parser(const char *filename);
     ~H264Parser();
-
+    void setFps(int fps_);
     static bool is_start_code(const uint8_t *_buffer, int64_t _bufLen, uint8_t start_code_type);
     std::pair<const uint8_t *, int64_t> get_next_frame();
 };
