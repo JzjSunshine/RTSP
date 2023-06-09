@@ -15,6 +15,14 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <ifaddrs.h>
+#include <sys/uio.h>
+#include <sys/types.h>          /* See NOTES */
+#include <fcntl.h>
+#include <stdio.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <string.h>
 
 RTSP::RTSP(const char *filename) : h264_file(filename)
 {
@@ -98,8 +106,8 @@ void RTSP::Start(const int ssrcNum, const char *sessionID, const int timeout, co
         fprintf(stderr, "failed to create RTCP socket: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-
-    fprintf(stdout, "rtsp://127.0.0.1:%d\n", SERVER_RTSP_PORT);
+    
+    fprintf(stdout, "rtsp://%s:%d\n", this->getLocalIp().c_str(),SERVER_RTSP_PORT);
 
     //while (true)
     //{
@@ -329,4 +337,42 @@ void RTSP::replyCmd_DESCRIBE(char *buffer, const int64_t bufferLen, const int cs
     sscanf(url, "rtsp://%[^:]:", ip);
     snprintf(sdp, sizeof(sdp), "v=0\r\no=- 9%ld 1 IN IP4 %s\r\nt=0 0\r\na=control:*\r\nm=video 0 RTP/AVP 96\r\na=rtpmap:96 H264/90000\r\na=control:track0\r\n", time(nullptr), ip);
     snprintf(buffer, bufferLen, "RTSP/1.0 200 OK\r\nCseq: %d\r\nContent-Base: %s\r\nContent-type: application/sdp\r\nContent-length: %ld\r\n\r\n%s", cseq, url, strlen(sdp), sdp);
+}
+
+std::string RTSP::getLocalIp()
+{
+    int sockfd = 0;
+    char buf[512] = { 0 };
+    struct ifconf ifconf;
+    struct ifreq  *ifreq;
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0)
+    {
+        close(sockfd);
+        return "0.0.0.0";
+    }
+
+    ifconf.ifc_len = 512;
+    ifconf.ifc_buf = buf;
+    if (ioctl(sockfd, SIOCGIFCONF, &ifconf) < 0)
+    {
+        close(sockfd);
+        return "0.0.0.0";
+    }
+
+    close(sockfd);
+
+    ifreq = (struct ifreq*)ifconf.ifc_buf;
+    for (int i = (ifconf.ifc_len / sizeof(struct ifreq)); i>0; i--)
+    {
+        if (ifreq->ifr_flags == AF_INET)
+        {
+            if (strcmp(ifreq->ifr_name, "lo") != 0)
+            {
+                return inet_ntoa(((struct sockaddr_in*)&(ifreq->ifr_addr))->sin_addr);
+            }
+            ifreq++;
+        }
+    }
+    return "0.0.0.0";
 }

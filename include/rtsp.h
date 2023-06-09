@@ -9,10 +9,16 @@
 #pragma once
 
 #include "H264.h"
+#include "AAC.h"
 #include "rtp.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <sys/socket.h>
+#include <ifaddrs.h>
+#include <arpa/inet.h>
+#include <sys/uio.h>
+#include <string>
 
 constexpr uint16_t SERVER_RTSP_PORT = 8554;
 constexpr uint16_t SERVER_RTP_PORT = 12345;
@@ -22,6 +28,7 @@ class RTSP
 {
 private:
     H264Parser h264_file;
+    AACParser aac_file;
     int server_rtsp_sock_fd{-1}, server_rtp_sock_fd{-1}, server_rtcp_sock_fd{-1};
     int client_rtp_port{-1}, client_rtcp_port{-1};
     static int Socket(int domain, int type, int protocol = 0);
@@ -40,6 +47,7 @@ private:
 
     static int64_t push_stream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, int64_t dataSize, const sockaddr *to, uint32_t timeStampStep);
 
+    std::string getLocalIp();
 public:
     explicit RTSP(const char *filename);
     ~RTSP();

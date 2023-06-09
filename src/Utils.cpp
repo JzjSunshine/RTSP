@@ -31,10 +31,9 @@ int Tookit::getFPSVideo()
         std::cout << "No video stream found in the input file " << std::endl;
         return -1;
     }
-    num_frames = format_ctx->streams[video_stream_index]->nb_frames;
-    duration = (double)format_ctx->streams[video_stream_index]->duration / AV_TIME_BASE;
+    AVStream* video_stream = format_ctx->streams[video_stream_index];
+    double fps = av_q2d(video_stream->avg_frame_rate);
 
-    double fps = 1/avg_frame_duration;
     return fps;
 }
 int Tookit::getFPSAudio()
