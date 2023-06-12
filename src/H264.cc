@@ -27,7 +27,7 @@ H264Parser::H264Parser(const char *filename)
     this->fd = open(filename, O_RDONLY);
     assert(this->fd >= 0);
 
-    struct stat file_stat;
+    struct stat file_stat;// 用于获取文件或者文件系统的状态信息，包括文件代销、访问权限、修改时间等
     fstat(this->fd, &file_stat);
 
     this->file_size = file_stat.st_size;
