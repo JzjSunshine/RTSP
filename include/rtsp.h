@@ -20,15 +20,20 @@
 #include <sys/uio.h>
 #include <string>
 
+#define H264_MODE "h264"
+#define AAC_MODE "aac"
+
 constexpr uint16_t SERVER_RTSP_PORT = 8554;
 constexpr uint16_t SERVER_RTP_PORT = 12345;
 constexpr uint16_t SERVER_RTCP_PORT = SERVER_RTP_PORT + 1;
 
+
 class RTSP
 {
 private:
-    H264Parser h264_file;
-    AACParser aac_file;
+    std::string mode;
+    H264Parser *h264_file;
+    AACParser *acc_file;
     int server_rtsp_sock_fd{-1}, server_rtp_sock_fd{-1}, server_rtcp_sock_fd{-1};
     int client_rtp_port{-1}, client_rtcp_port{-1};
     static int Socket(int domain, int type, int protocol = 0);
@@ -46,11 +51,15 @@ private:
     void serve_client(int clientfd, const sockaddr_in &cliAddr, int rtpFD, int ssrcNum, const char *sessionID, int timeout, float fps);
 
     static int64_t push_stream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, int64_t dataSize, const sockaddr *to, uint32_t timeStampStep);
-
+    static int64_t push_stream_acc(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, int64_t dataSize, const sockaddr *to, uint32_t timeStampStep);
     std::string getLocalIp();
 public:
-    explicit RTSP(const char *filename);
+    explicit RTSP(const char *filename,std::string mode);
     ~RTSP();
 
     void Start(int ssrcNum, const char *sessionID, int timeout, float fps);
 };
+
+
+
+
