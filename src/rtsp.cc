@@ -263,7 +263,7 @@ void RTSP::serve_client(int clientfd, const sockaddr_in &cliAddr, int rtpFD, con
                     }
 
                     const int64_t start_code_len = H264Parser::is_start_code(ptr_cur_frame, cur_frame_size, 4) ? 4 : 3;
-                    RTSP::push_stream(rtpFD, rtpPack, ptr_cur_frame + start_code_len, cur_frame_size - start_code_len, (sockaddr *)&clientSock, timeStampStep);
+                    RTSP::push_stream_h264(rtpFD, rtpPack, ptr_cur_frame + start_code_len, cur_frame_size - start_code_len, (sockaddr *)&clientSock, timeStampStep);
                 }else{
                     // acc
                 }
@@ -277,17 +277,22 @@ void RTSP::serve_client(int clientfd, const sockaddr_in &cliAddr, int rtpFD, con
     close(clientfd);
 }
 
-int64_t RTSP::push_stream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, const int64_t dataSize, const sockaddr *to, const uint32_t timeStampStep)
+int64_t RTSP::push_stream_h264(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, const int64_t dataSize, const sockaddr *to, const uint32_t timeStampStep)
 {
     const uint8_t naluHeader = data[0];
+    //*   0 1 2 3 4 5 6 7 8 9
+    //*  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //*  |F|NRI|  Type   | a single NAL unit ... |
+    //*  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     if (dataSize <= RTP_MAX_DATA_SIZE)
-    {
+    { // nalu长度小于最大包长：单一NALU单元模式
         rtpPack.load_data(data, dataSize);
         auto ret = rtpPack.rtp_sendto(sockfd, dataSize + RTP_HEADER_SIZE, 0, to, timeStampStep);
         if (ret < 0)
             fprintf(stderr, "RTP_Packet::rtp_sendto() failed: %s\n", strerror(errno));
         return ret;
     }
+    // nalu长度小于最大包场：分片模式
     // 计算需要多少个分片，然后为不足一包的数据进行打包
     const int64_t packetNum = dataSize / RTP_MAX_DATA_SIZE;
     const int64_t remainPacketSize = dataSize % RTP_MAX_DATA_SIZE;
@@ -296,6 +301,23 @@ int64_t RTSP::push_stream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, 
     auto payload = rtpPack.get_payload();
     // 考虑当前分片是否为首个分片或末尾分片，以设置S标志和E标志，
     // 然后将当前包发送到网络上
+    //*  0                   1                   2
+    //*  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3
+    //* +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //* | FU indicator  |   FU header   |   FU payload   ...  |
+    //* +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+    //*     FU Indicator
+    //*    0 1 2 3 4 5 6 7
+    //*   +-+-+-+-+-+-+-+-+
+    //*   |F|NRI|  Type   |
+    //*   +---------------+
+
+    //*      FU Header
+    //*    0 1 2 3 4 5 6 7
+    //*   +-+-+-+-+-+-+-+-+
+    //*   |S|E|R|  Type   |
+    //*   +---------------+
     for (int64_t i = 0; i < packetNum; i++)
     {
         rtpPack.load_data(data + pos, RTP_MAX_DATA_SIZE, FU_Size);
