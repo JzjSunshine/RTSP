@@ -268,12 +268,14 @@ int64_t RTSP::push_stream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, 
             fprintf(stderr, "RTP_Packet::rtp_sendto() failed: %s\n", strerror(errno));
         return ret;
     }
-
+    // 计算需要多少个分片，然后为不足一包的数据进行打包
     const int64_t packetNum = dataSize / RTP_MAX_DATA_SIZE;
     const int64_t remainPacketSize = dataSize % RTP_MAX_DATA_SIZE;
     int64_t pos = 1;
     int64_t sentBytes = 0;
     auto payload = rtpPack.get_payload();
+    // 考虑当前分片是否为首个分片或末尾分片，以设置S标志和E标志，
+    // 然后将当前包发送到网络上
     for (int64_t i = 0; i < packetNum; i++)
     {
         rtpPack.load_data(data + pos, RTP_MAX_DATA_SIZE, FU_Size);
@@ -293,6 +295,7 @@ int64_t RTSP::push_stream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, 
         sentBytes += ret;
         pos += RTP_MAX_DATA_SIZE;
     }
+    // 考虑残余分片
     if (remainPacketSize > 0)
     {
         rtpPack.load_data(data + pos, remainPacketSize, FU_Size);
