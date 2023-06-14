@@ -26,7 +26,8 @@ int main(int argc, char *argv[])
         fprintf(stdout, "usage: %s <file name> <fileType(h264/aac)>\n", argv[0]);
         return 1;
     }
-    RTSP rtspServer(argv[1]);
+    std::string mode = fileType.c_str();
+    RTSP rtspServer(argv[1],mode);
     Tookit tookit(argv[1]);
     int fps = 0;
     if(fileType == "h264"){

@@ -17,15 +17,29 @@
 #include <unistd.h>
 #include <ifaddrs.h>
 #include <sys/uio.h>
-#include <sys/types.h>          /* See NOTES */
+#include <sys/types.h> /* See NOTES */
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <string.h>
 
-RTSP::RTSP(const char *filename) : h264_file(filename)
+RTSP::RTSP(const char *filename, std::string mode)
 {
+    this->mode = mode;
+    if (mode == "h264")
+    {
+        this->h264_file = new H264Parser(filename);
+        this->acc_file = nullptr;
+    }
+    else if (mode == "aac")
+    {
+        this->acc_file = new AACParser(filename);
+        this->h264_file = nullptr;
+    }
+    else
+    {
+    }
 }
 
 RTSP::~RTSP()
@@ -106,10 +120,10 @@ void RTSP::Start(const int ssrcNum, const char *sessionID, const int timeout, co
         fprintf(stderr, "failed to create RTCP socket: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-    
-    fprintf(stdout, "rtsp://%s:%d\n", this->getLocalIp().c_str(),SERVER_RTSP_PORT);
 
-    //while (true)
+    fprintf(stdout, "rtsp://%s:%d\n", this->getLocalIp().c_str(), SERVER_RTSP_PORT);
+
+    // while (true)
     //{
     sockaddr_in cliAddr{};
     bzero(&cliAddr, sizeof(cliAddr));
@@ -118,7 +132,7 @@ void RTSP::Start(const int ssrcNum, const char *sessionID, const int timeout, co
     if (cli_sockfd < 0)
     {
         fprintf(stderr, "accept error(): %s\n", strerror(errno));
-        //continue;
+        // continue;
         return;
     }
     char IPv4[16]{0};
@@ -223,7 +237,7 @@ void RTSP::serve_client(int clientfd, const sockaddr_in &cliAddr, int rtpFD, con
 
             fprintf(stdout, "start send stream to %s:%d\n", IPv4, ntohs(clientSock.sin_port));
 
-            //uint32_t tmpTimeStamp = 0;
+            // uint32_t tmpTimeStamp = 0;
             const auto timeStampStep = uint32_t(90000 / fps);
             const auto sleepPeriod = uint32_t(1000 * 1000 / fps);
             RTP_Header rtpHeader(0, 0, ssrcNum);
@@ -231,23 +245,29 @@ void RTSP::serve_client(int clientfd, const sockaddr_in &cliAddr, int rtpFD, con
 
             while (true)
             {
-                auto cur_frame = this->h264_file.get_next_frame();
-                const auto ptr_cur_frame = cur_frame.first;
-                const auto cur_frame_size = cur_frame.second;
-
-                if (cur_frame_size < 0)
+                if (this->mode == H264_MODE)
                 {
-                    fprintf(stderr, "RTSP::serve_client() H264::getOneFrame() failed\n");
-                    break;
-                }
-                else if (!cur_frame_size)
-                {
-                    fprintf(stdout, "Finish serving the user\n");
-                    return;
+                    auto cur_frame = this->h264_file->get_next_frame();
+                    const auto ptr_cur_frame = cur_frame.first;
+                    const auto cur_frame_size = cur_frame.second;
+
+                    if (cur_frame_size < 0)
+                    {
+                        fprintf(stderr, "RTSP::serve_client() H264::getOneFrame() failed\n");
+                        break;
+                    }
+                    else if (!cur_frame_size)
+                    {
+                        fprintf(stdout, "Finish serving the user\n");
+                        return;
+                    }
+
+                    const int64_t start_code_len = H264Parser::is_start_code(ptr_cur_frame, cur_frame_size, 4) ? 4 : 3;
+                    RTSP::push_stream(rtpFD, rtpPack, ptr_cur_frame + start_code_len, cur_frame_size - start_code_len, (sockaddr *)&clientSock, timeStampStep);
+                }else{
+                    // acc
                 }
 
-                const int64_t start_code_len = H264Parser::is_start_code(ptr_cur_frame, cur_frame_size, 4) ? 4 : 3;
-                RTSP::push_stream(rtpFD, rtpPack, ptr_cur_frame + start_code_len, cur_frame_size - start_code_len, (sockaddr *)&clientSock, timeStampStep);
                 usleep(sleepPeriod);
             }
             break;
@@ -345,9 +365,9 @@ void RTSP::replyCmd_DESCRIBE(char *buffer, const int64_t bufferLen, const int cs
 std::string RTSP::getLocalIp()
 {
     int sockfd = 0;
-    char buf[512] = { 0 };
+    char buf[512] = {0};
     struct ifconf ifconf;
-    struct ifreq  *ifreq;
+    struct ifreq *ifreq;
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0)
     {
@@ -365,14 +385,14 @@ std::string RTSP::getLocalIp()
 
     close(sockfd);
 
-    ifreq = (struct ifreq*)ifconf.ifc_buf;
-    for (int i = (ifconf.ifc_len / sizeof(struct ifreq)); i>0; i--)
+    ifreq = (struct ifreq *)ifconf.ifc_buf;
+    for (int i = (ifconf.ifc_len / sizeof(struct ifreq)); i > 0; i--)
     {
         if (ifreq->ifr_flags == AF_INET)
         {
             if (strcmp(ifreq->ifr_name, "lo") != 0)
             {
-                return inet_ntoa(((struct sockaddr_in*)&(ifreq->ifr_addr))->sin_addr);
+                return inet_ntoa(((struct sockaddr_in *)&(ifreq->ifr_addr))->sin_addr);
             }
             ifreq++;
         }
