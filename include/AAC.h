@@ -3,40 +3,37 @@
 #include <stdio.h>
 #include <stdint.h>
 
-class ADTSHeader{
-private:
+struct ADTSHeader{
     //adts头总共占7byte 56bit
-    uint16_t synword : 12; /*总是0xFF (1111 1111 1111)，代表ADTS帧的开始*/
-    uint8_t id : 1; /*设置MPEG标识符，0标识MPEG-4 1标识MPEG-2*/
-    uint8_t layer : 2; /*总是00*/
-    uint8_t protectionAbsent : 1; /*校验位，0表示有CRC校验，1表示没有CRC校验*/
-    uint8_t profile : 2; /*AAC级别*/
+    unsigned int syncword;  //12 bit 同步字 '1111 1111 1111'，一个ADTS帧的开始
+    uint8_t id;        //1 bit 0代表MPEG-4, 1代表MPEG-2。
+    uint8_t layer;     //2 bit 必须为0
+    uint8_t protectionAbsent;  //1 bit 1代表没有CRC，0代表有CRC
+    uint8_t profile;           //1 bit AAC级别（MPEG-2 AAC中定义了3种profile，MPEG-4 AAC中定义了6种profile）
+    uint8_t samplingFreqIndex; //4 bit 采样率
+    uint8_t privateBit;        //1bit 编码时设置为0，解码时忽略
+    uint8_t channelCfg;        //3 bit 声道数量
+    uint8_t originalCopy;      //1bit 编码时设置为0，解码时忽略
+    uint8_t home;               //1 bit 编码时设置为0，解码时忽略
 
-    uint8_t samplingFrequencyIndex : 4; /*采样率下标*/
-    uint8_t privateBit : 1; /*编码设为0，解码忽略*/
+    uint8_t copyrightIdentificationBit;   //1 bit 编码时设置为0，解码时忽略
+    uint8_t copyrightIdentificationStart; //1 bit 编码时设置为0，解码时忽略
+    unsigned int aacFrameLength;               //13 bit 一个ADTS帧的长度包括ADTS头和AAC原始流
+    unsigned int adtsBufferFullness;           //11 bit 缓冲区充满度，0x7FF说明是码率可变的码流，不需要此字段。CBR可能需要此字段，不同编码器使用情况不同。这个在使用音频编码的时候需要注意。
 
-    uint8_t channelConfiguration : 3;/*声道数*/
-    uint8_t orinialCopy : 1; /*编码设为0，解码忽略*/
-    uint8_t home : 1; /*编码设为0，解码忽略*/
-    uint8_t copyrigthIdentificationBit : 1; /*编码设为0，解码忽略*/
-    uint8_t copyrigthIndectificationStat : 1; /*编码设为0，解码忽略*/
-
-    uint16_t aacFrameLength : 13; /*ADTS帧长度，包括ADTS头和AAC原始流*/
-    uint16_t adtsBufferfullness : 11; /*缓冲区充满度*/
-    uint8_t numberOfRawDataBlocksInFrame : 2; /*表示ADTS*/
-
-public:
-    ADTSHeader(
-        uint16_t synword,
-        uint8_t id
-    );
-
+    /* number_of_raw_data_blocks_in_frame
+     * 表示ADTS帧中有number_of_raw_data_blocks_in_frame + 1个AAC原始帧
+     * 所以说number_of_raw_data_blocks_in_frame == 0
+     * 表示说ADTS帧中有一个AAC数据块并不是说没有。(一个AAC原始帧包含一段时间内1024个采样及相关数据)
+     */
+    uint8_t numberOfRawDataBlockInFrame; //2 bit
 };
 
 class AACParser{
 private:
     double fps;
     int fd = -1;
+    const char *filename = nullptr;
     int64_t fileSize = 0;
     ADTSHeader adtdHeader;
 public:
