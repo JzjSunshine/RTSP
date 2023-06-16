@@ -266,6 +266,7 @@ void RTSP::serve_client(int clientfd, const sockaddr_in &cliAddr, int rtpFD, con
                     RTSP::push_stream_h264(rtpFD, rtpPack, ptr_cur_frame + start_code_len, cur_frame_size - start_code_len, (sockaddr *)&clientSock, timeStampStep);
                 }else{
                     // acc
+                    
                 }
 
                 usleep(sleepPeriod);
@@ -353,7 +354,38 @@ int64_t RTSP::push_stream_h264(int sockfd, RTP_Packet &rtpPack, const uint8_t *d
     }
     return sentBytes;
 }
+int64_t RTSP::push_stream_acc(int sockfd, RTP_Packet &rtpPacket, const uint8_t *data, int64_t dataSize, const sockaddr *to, uint32_t timeStampStep)
+{
+    //打包文档：https://blog.csdn.net/yangguoyu8023/article/details/106517251/
+    int ret;
 
+    rtpPacket.pal[0] = 0x00;
+    rtpPacket.payload[1] = 0x10;
+    rtpPacket->payload[2] = (frameSize & 0x1FE0) >> 5; //高8位
+    rtpPacket->payload[3] = (frameSize & 0x1F) << 3; //低5位
+
+    memcpy(rtpPacket->payload + 4, frame, frameSize);
+
+    ret = rtpSendPacketOverUdp(socket, ip, port, rtpPacket, frameSize + 4);
+    if (ret < 0)
+    {
+        printf("failed to send rtp packet\n");
+        return -1;
+    }
+
+    rtpPacket->rtpHeader.seq++;
+
+    /*
+     * 如果采样频率是44100
+     * 一般AAC每个1024个采样为一帧
+     * 所以一秒就有 44100 / 1024 = 43帧
+     * 时间增量就是 44100 / 43 = 1025
+     * 一帧的时间为 1 / 43 = 23ms
+     */
+    rtpPacket->rtpHeader.timestamp += 1025;
+
+    return 0;
+}
 void RTSP::replyCmd_OPTIONS(char *buffer, const int64_t bufferLen, const int cseq)
 {
     snprintf(buffer, bufferLen, "RTSP/1.0 200 OK\r\nCseq: %d\r\nPublic: OPTIONS, DESCRIBE, SETUP, PLAY\r\n\r\n", cseq);

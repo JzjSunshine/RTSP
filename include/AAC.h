@@ -35,7 +35,8 @@ private:
     int fd = -1;
     const char *filename = nullptr;
     int64_t fileSize = 0;
-    ADTSHeader adtdHeader;
+    ADTSHeader *adtdHeader;
+    uint8_t* frame;
 public:
     explicit AACParser(const char *filename); // 防止拷贝初始化和隐式转换
     ~AACParser();

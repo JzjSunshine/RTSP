@@ -17,6 +17,7 @@ constexpr int64_t MAX_UDP_PACKET_SIZE = 65535;
 constexpr int64_t RTP_VERSION = 2;
 constexpr int64_t RTP_HEADER_SIZE = 12;
 constexpr int64_t RTP_PAYLOAD_TYPE_H264 = 96;
+constexpr int64_t RTP_PAYLOAD_TYPE_AAC = 97;
 constexpr int64_t FU_Size = 2;
 constexpr int64_t RTP_MAX_DATA_SIZE = MAX_UDP_PACKET_SIZE - 8 - 20 - RTP_HEADER_SIZE - FU_Size;
 constexpr int64_t RTP_MAX_PACKET_LEN = RTP_MAX_DATA_SIZE + RTP_HEADER_SIZE + FU_Size;
@@ -82,7 +83,7 @@ private:
 
 public:
     explicit RTP_Packet(const RTP_Header &rtpHeader);
-
+    
     RTP_Packet(const RTP_Packet &) = default;
     ~RTP_Packet() = default;
     /**
