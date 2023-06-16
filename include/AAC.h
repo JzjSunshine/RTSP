@@ -3,10 +3,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
-class AACParser{
+class ADTSHeader{
 private:
-    int fd = -1;
-    int64_t fileSize = 0;
     //adts头总共占7byte 56bit
     uint16_t synword : 12; /*总是0xFF (1111 1111 1111)，代表ADTS帧的开始*/
     uint8_t id : 1; /*设置MPEG标识符，0标识MPEG-4 1标识MPEG-2*/
@@ -26,8 +24,21 @@ private:
     uint16_t aacFrameLength : 13; /*ADTS帧长度，包括ADTS头和AAC原始流*/
     uint16_t adtsBufferfullness : 11; /*缓冲区充满度*/
     uint8_t numberOfRawDataBlocksInFrame : 2; /*表示ADTS*/
-    double fps;
 
+public:
+    ADTSHeader(
+        uint16_t synword,
+        uint8_t id
+    );
+
+};
+
+class AACParser{
+private:
+    double fps;
+    int fd = -1;
+    int64_t fileSize = 0;
+    ADTSHeader adtdHeader;
 public:
     explicit AACParser(const char *filename); // 防止拷贝初始化和隐式转换
     ~AACParser();
@@ -36,3 +47,4 @@ public:
 };
 
 #endif
+

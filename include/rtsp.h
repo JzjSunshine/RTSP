@@ -50,9 +50,10 @@ private:
 
     void serve_client(int clientfd, const sockaddr_in &cliAddr, int rtpFD, int ssrcNum, const char *sessionID, int timeout, float fps);
 
-    static int64_t push_stream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, int64_t dataSize, const sockaddr *to, uint32_t timeStampStep);
+    static int64_t push_stream_h264(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, int64_t dataSize, const sockaddr *to, uint32_t timeStampStep);
     static int64_t push_stream_acc(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, int64_t dataSize, const sockaddr *to, uint32_t timeStampStep);
-    std::string getLocalIp();
+    // 获取本机本地IPV4地址
+    std::string get_LocalIp();
 public:
     explicit RTSP(const char *filename,std::string mode);
     ~RTSP();
